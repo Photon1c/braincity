@@ -1,0 +1,24 @@
+{
+  "name": "braincity-v3",
+  "version": "3.0.0",
+  "description": "Netlify-deployable BrainCity project atlas — Three.js 3D visualization with City/Neural/State modes",
+  "type": "module",
+  "scripts": {
+    "dev": "serve . -l 3007",
+    "dev:python": "python -m http.server 3007",
+    "check": "node --check src/main.js && node --check src/shared/dataModel.js && node --check src/shared/signalEngine.js && node --check src/shared/cameraRig.js && node --check src/shared/hud.js && node --check src/renderers/RendererCity.js && node --check src/renderers/RendererNeural.js && node --check src/state/StateEvolutionEngine.js",
+    "validate:json": "python -m json.tool data/public/projects.json > /dev/null && python -m json.tool data/public/manifest.json > /dev/null && python -m json.tool data/internal/projects.json > /dev/null && python -m json.tool data/internal/manifest.json > /dev/null && python -m json.tool data/private/projects.json > /dev/null && python -m json.tool data/private/manifest.json > /dev/null && echo 'All JSON files valid'"
+  },
+  "keywords": [
+    "threejs",
+    "visualization",
+    "project-atlas",
+    "netlify",
+    "brain-city"
+  ],
+  "author": "BrainCity Lab",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "serve": "^14.2.0"
+  }
+}

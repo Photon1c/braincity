@@ -1,0 +1,32 @@
+[build]
+  command = "echo 'Static site - no build required'"
+  publish = "."
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+[[headers]]
+  for = "/data/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Cache-Control = "public, max-age=3600"
+
+[[redirects]]
+  from = "/lab/*"
+  to = "/?edition=lab/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/public/*"
+  to = "/:splat"
+  status = 200
+
+# SPA fallback for client-side routing
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
