@@ -48,6 +48,7 @@
             const editionBadge = edition === 'laboratory' ? ' <span style="color: var(--gold); font-size: 7px;">[LAB]</span>' : '';
             setStats(`
                 <div class="row"><span>Name</span><span>${p.name}${editionBadge}</span></div>
+                <div class="empty" style="margin:3px 0 5px;font-size:9px;color:rgba(255,255,255,0.5);">${p.description || ''}</div>
                 <div class="row"><span>Type</span><span>${p.type}</span></div>
                 <div class="row"><span>District</span><span>${p.district}</span></div>
                 <div class="row"><span>Zone</span><span>${p.zone.toUpperCase()}</span></div>
@@ -67,6 +68,7 @@
             const coh = syncCoh != null ? `${Math.round(syncCoh)} Hz` : '—';
             setStats(`
                 <div class="row"><span>Node</span><span>${p.name}${editionBadge}</span></div>
+                <div class="empty" style="margin:3px 0 5px;font-size:9px;color:rgba(255,255,255,0.5);">${p.description || ''}</div>
                 <div class="row"><span>District</span><span>${p.district}</span></div>
                 <div class="row"><span>Zone</span><span>${p.zone.toUpperCase()}</span></div>
                 <div class="row"><span>Dendrites</span><span>${inCount} in</span></div>

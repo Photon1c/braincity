@@ -355,11 +355,12 @@
                         font-size:11px;color:#050a10;font-weight:700;
                         flex-shrink:0;box-shadow:0 0 8px ${zoneColors[p.zone] || '#aa44ff'}40;
                     ">${typeIcons[p.type] || '●'}</div>
-                    <div style="flex:1;min-width:0;">
-                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-                            <span style="font-size:12px;font-weight:600;color:#e8f4f8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.name}</span>
-                            <span style="font-size:8px;padding:2px 6px;background:rgba(255,255,255,0.05);border-radius:999px;color:rgba(232,244,248,0.5);letter-spacing:0.5px;">${p.type.toUpperCase()}</span>
-                        </div>
+                        <div style="flex:1;min-width:0;">
+                            <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">
+                                <span style="font-size:12px;font-weight:600;color:#e8f4f8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.name}</span>
+                                <span style="font-size:8px;padding:2px 6px;background:rgba(255,255,255,0.05);border-radius:999px;color:rgba(232,244,248,0.5);letter-spacing:0.5px;">${p.type.toUpperCase()}</span>
+                            </div>
+                            <div style="font-size:8px;color:rgba(232,244,248,0.35);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.description || ''}</div>
                         <div style="display:flex;gap:12px;font-size:9px;color:rgba(232,244,248,0.4);">
                             <span>⌬ ${p.repoCount} repos</span>
                             <span>⟳ ${p.commitActivity}</span>

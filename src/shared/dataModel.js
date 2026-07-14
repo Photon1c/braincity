@@ -95,11 +95,22 @@
                 const r = Math.sqrt(Math.random()) * CONFIG.world.districtSpread;
                 const position = { x: cx + Math.cos(a) * r, y: 0, z: cz + Math.sin(a) * r };
                 const zone = pick(Object.values(ZONES));
+                const descs = {
+                    engine: 'Core processing engine for predictive modeling and simulation orchestration.',
+                    project: 'Development project with cross-team dependencies and active iteration.',
+                    visualizer: 'Data visualization and real-time monitoring dashboard.',
+                    monitor: 'System health and performance monitoring service.',
+                    simulator: 'Agent-based and statistical simulation environment.',
+                    infrastructure: 'Infrastructure and deployment automation tooling.',
+                    'market-tool': 'Market analysis and trading signal processing pipeline.'
+                };
+                const type = pick(TYPES);
                 projects.push({
                     id: id++,
                     name: `${pick(ADJ)}-${pick(NOUN)}`,
-                    type: pick(TYPES),
+                    type,
                     district: districtName,
+                    description: descs[type] || 'Project node in the BrainCity network.',
                     repoCount: randInt(1, 12),
                     commitActivity: randInt(5, 100),
                     stars: randInt(0, 500),
