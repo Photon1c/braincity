@@ -77,6 +77,22 @@
     }
     #legend .item { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
     #legend .swatch { width: 12px; height: 12px; border-radius: 3px; }
+
+    @media (max-width: 640px) {
+        #hud { width: calc(100% - 32px); max-width: none; top: 8px; left: 8px; padding: 8px 10px; }
+        #hud h1 { font-size: 9px; margin-bottom: 4px; }
+        #hud .row { font-size: 8px; gap: 6px; margin-bottom: 3px; }
+        #hud .empty { font-size: 8px; }
+        #hud .btn { font-size: 8px; padding: 6px 8px; margin-top: 6px; }
+        #instructions { bottom: 8px; right: 8px; font-size: 7px; max-width: 140px; }
+        #legend { display: none; }
+        #sidepanel { width: 100% !important; }
+        #sidepanel .project-row { padding: 8px 10px !important; }
+    }
+    @media (max-width: 480px) {
+        #hud h1 { font-size: 8px; }
+        #instructions { display: none; }
+    }
 </style>
 </head>
 <body>
@@ -86,7 +102,7 @@
     <div id="hud-stats"><div class="empty">Click a building to select it, then go neural to enter its signal network.</div></div>
     <button class="btn" id="hud-action" style="display:none;"></button>
 </div>
-<div id="instructions">Drag to orbit · Click to select · S for State Engine · Esc to surface</div>
+<div id="instructions">Drag to orbit · Tap to select · S for State Engine · Esc to surface</div>
 
 <div id="legend">
     <div style="font-weight: 700; color: var(--cyan); margin-bottom: 6px; font-size: 10px;">EXECUTION ZONES</div>

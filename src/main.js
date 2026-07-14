@@ -48,8 +48,9 @@
         const camera = new THREE.PerspectiveCamera(CONFIG.camera.fov, window.innerWidth / window.innerHeight, CONFIG.camera.near, CONFIG.camera.far);
         camera.position.set(280, 240, 280);
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        const isMobile = window.innerWidth <= 640;
+        const renderer = new THREE.WebGLRenderer({ antialias: !isMobile });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.toneMapping = THREE.NoToneMapping;
         renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -64,6 +65,8 @@
         composer.addPass(bloomPass);
 
         window.addEventListener('resize', () => {
+            const mob = window.innerWidth <= 640;
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, mob ? 1.5 : 2));
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
@@ -89,6 +92,24 @@
         /* ---------------- SIDE PANEL ---------------- */
         const sidePanel = SidePanel.create();
         sidePanel.setProjects(graph.projects);
+
+        // Mobile side panel toggle
+        const panelToggle = document.createElement('button');
+        panelToggle.textContent = '☰';
+        panelToggle.style.cssText = `
+            position: absolute; top: 8px; right: 8px; z-index: 99;
+            width: 36px; height: 36px; border: 1px solid var(--panel-border);
+            background: var(--panel-bg); color: var(--cyan);
+            border-radius: 8px; font-size: 16px; cursor: pointer;
+            backdrop-filter: blur(18px) saturate(160%);
+            display: none; align-items: center; justify-content: center;
+        `;
+        document.body.appendChild(panelToggle);
+        panelToggle.addEventListener('click', () => sidePanel.toggle());
+        if (window.innerWidth <= 640) panelToggle.style.display = 'flex';
+        window.addEventListener('resize', () => {
+            panelToggle.style.display = window.innerWidth <= 640 ? 'flex' : 'none';
+        });
         sidePanel.onSelect((project) => {
             selectedProject = project;
             city.select(project);
