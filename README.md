@@ -4,10 +4,13 @@ A Three.js-powered 3D visualization of the BrainCity research lab's project ecos
 
 ## Features
 
-- **City Mode**: Infrastructure view with buildings (projects), roads (dependencies), and signal pulses
-- **Neural Mode**: Cognitive view - click a building to dive into its dependency graph as a neuron
+- **City Mode**: Zone-colored buildings (projects) with window lights, cable network (dependencies), signal pulses, and zone boundary labels
+- **Neural Mode**: Cognitive view — click a building to dive into its dependency graph as a neuron with soma/pod firing and signal propagation
 - **State Evolution Engine**: Six-dimensional state dynamics visualization (Persistence, Production, Release, Pressure, Transport, Dissipation)
 - **Execution Environment Zoning**: Color-coded by deployment target (Windows=blue, VPS=green, Cloud=orange, Cross=purple)
+- **Camera Focus**: Click a building to smoothly fly the camera to it; orbit controls re-enabled on arrival
+- **Hover Highlighting**: Hover over a building to highlight its connected dependency cables
+- **Bloom Glow**: UnrealBloomPass for atmospheric glow, tuned for dark theme
 - **Edition Separation**: 
   - **Public Edition**: Portfolio-ready, curated metadata only
   - **Laboratory Edition**: Authenticated, includes internal telemetry and VPS state
@@ -30,7 +33,7 @@ Then open http://localhost:3007
 |--------|---------|
 | Orbit camera | Drag |
 | Zoom | Scroll |
-| Select building | Click |
+| Select building | Click (camera auto-focuses) |
 | Go Neural | Click "Go Neural →" button |
 | Fire neuron | Click soma (center sphere) |
 | Explore dependency | Click dendrite/axon pod |
@@ -54,14 +57,16 @@ braincity/
 │       ├── projects.json
 │       └── manifest.json
 ├── src/
-│   ├── main.js             # Orchestrator
+│   ├── main.js             # Orchestrator (scene setup, animation loop, pointer events)
 │   ├── shared/
-│   │   ├── dataModel.js    # Project graph, visibility filtering, zone config
+│   │   ├── dataModel.js    # Project graph, visibility filtering, zone config, position assignment
 │   │   ├── signalEngine.js # Pooled pulse system
 │   │   ├── cameraRig.js    # Camera transitions
 │   │   └── hud.js          # HUD DOM management
+│   ├── ui/
+│   │   └── SidePanel.js    # Project list side panel with search and selection
 │   ├── renderers/
-│   │   ├── RendererCity.js # City mode renderer
+│   │   ├── RendererCity.js # City mode renderer (InstancedMesh per type/zone, window lights, cables)
 │   │   └── RendererNeural.js # Neural mode renderer
 │   └── state/
 │       └── StateEvolutionEngine.js # 6D state dynamics
@@ -88,6 +93,8 @@ Each project node has:
 }
 ```
 
+When no `projects.json` is found, the app falls back to procedurally generated projects.
+
 ## Deployment
 
 ### Netlify (Recommended)
@@ -97,7 +104,6 @@ Each project node has:
 3. Build command: `echo 'static site'`
 4. Publish directory: `.`
 5. Enable **Netlify Identity** for Laboratory Edition gating
-6. Add `_redirects` or use `netlify.toml` for `/lab/*` routes
 
 ### Manual
 
@@ -123,18 +129,17 @@ No build step. Edit files in `src/` and reload browser.
 ### Adding Projects
 
 1. Add to appropriate `data/{public,internal,private}/projects.json`
-2. Update `manifest.json` with district/zone/type metadata
-3. Run local server to verify
+2. Run local server to verify (generated fallback activates when file missing)
 
 ### Adding Zones
 
 Edit `CONFIG.colors.zone` in `src/shared/dataModel.js`:
 ```javascript
 zone: {
-  windows: 0x0088ff,
-  vps: 0x00ff88,
-  cloud: 0xff8800,
-  cross: 0xaa44ff
+  windows: 0x88ccff,
+  vps: 0x88ffaa,
+  cloud: 0xffcc88,
+  cross: 0xcc99ff
 }
 ```
 
@@ -151,6 +156,7 @@ Edit `DIMENSIONS` array in `src/state/StateEvolutionEngine.js`:
 - **Visibility Filtering**: `DataModel.buildGraph()` accepts `visibility` and `zones` filters
 - **No VPS Direct Access**: Browser never queries VPS directly; consumes pre-exported JSON snapshots
 - **ES Modules**: Uses importmap for Three.js CDN, classic script tags for local modules (works on file://)
+- **InstancedMesh**: Buildings rendered via multiple `InstancedMesh` objects grouped by (type, zone) pair for per-zone coloring without relying on vertexColors + instanceColor
 
 ## License
 
