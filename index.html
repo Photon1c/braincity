@@ -114,12 +114,14 @@
     import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
     import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
     import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+    import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
     window.THREE = THREE;
     window.OrbitControls = OrbitControls;
     window.EffectComposer = EffectComposer;
     window.RenderPass = RenderPass;
     window.UnrealBloomPass = UnrealBloomPass;
+    window.mergeGeometries = mergeGeometries;
     window.dispatchEvent(new Event('citybrain:three-ready'));
 </script>
 
