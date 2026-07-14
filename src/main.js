@@ -41,7 +41,9 @@
 
         /* ---------------- SCENE_SETUP ---------------- */
         const scene = new THREE.Scene();
-        scene.fog = new THREE.FogExp2(0x01040a, 0.0011);
+        // Dark theme background
+        scene.fog = new THREE.FogExp2(0x01040a, 0.0008);
+        scene.background = new THREE.Color(0x01040a);
 
         const camera = new THREE.PerspectiveCamera(CONFIG.camera.fov, window.innerWidth / window.innerHeight, CONFIG.camera.near, CONFIG.camera.far);
         camera.position.set(280, 240, 280);
@@ -49,7 +51,7 @@
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.toneMapping = THREE.ReinhardToneMapping;
+        renderer.toneMapping = THREE.NoToneMapping;
         renderer.outputColorSpace = THREE.SRGBColorSpace;
         document.body.appendChild(renderer.domElement);
 
@@ -83,6 +85,17 @@
         const stateEngine = StateEvolutionEngine.create(THREE, scene, graph, CONFIG);
         const cameraRig = CameraRig.createCameraRig(THREE, camera, controls);
         const hud = HUD.createHUD();
+
+        /* ---------------- SIDE PANEL ---------------- */
+        const sidePanel = SidePanel.create();
+        sidePanel.setProjects(graph.projects);
+        sidePanel.onSelect((project) => {
+            selectedProject = project;
+            city.select(project);
+        });
+        sidePanel.onHover((projectId) => {
+            city.setHover(projectId);
+        });
 
         /* ---------------- STATE_MACHINE ---------------- */
         let appState = 'city'; // 'city' | 'transition' | 'neural' | 'state'
@@ -190,11 +203,25 @@
             if (e.key === 's' && appState === 'city') enterStateEngine();
         });
 
-        /* ---------------- pointer -> pick ---------------- */
+/* ---------------- pointer -> pick ---------------- */
         const raycaster = new THREE.Raycaster();
         const pointerNDC = new THREE.Vector2();
         let pointerDownPos = null;
         let pointerDownTime = 0;
+
+        // Hover tracking
+        renderer.domElement.addEventListener('pointermove', (e) => {
+            if (appState !== 'city') return;
+            pointerNDC.x = (e.clientX / window.innerWidth) * 2 - 1;
+            pointerNDC.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(pointerNDC, camera);
+            const hit = city.pickAt(raycaster);
+            if (hit) {
+                city.setHover(hit.id);
+            } else {
+                city.setHover(null);
+            }
+        });
 
         renderer.domElement.addEventListener('pointerdown', (e) => {
             pointerDownPos = { x: e.clientX, y: e.clientY };
@@ -214,7 +241,7 @@
 
             if (appState === 'city') {
                 const hit = city.pickAt(raycaster);
-                if (hit) { selectedProject = hit; city.select(hit); }
+                if (hit) { selectedProject = hit; city.select(hit); sidePanel.select(hit); }
                 else { selectedProject = null; city.clearSelection(); }
             } else if (appState === 'neural') {
                 const hit = neural.pickAt(raycaster);

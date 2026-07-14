@@ -34,15 +34,15 @@
         colors: {
             healthy: 0x00e5ff,
             stressed: 0xff0066,
-            cableLow: 0x1144aa,
-            cableHigh: 0x00e5ff,
+            cableLow: 0x443322,
+            cableHigh: 0xffaa44,
             dendrite: 0x00e5ff,
             axon: 0xffaa00,
             zone: {
-                windows: 0x0088ff,
-                vps: 0x00ff88,
-                cloud: 0xff8800,
-                cross: 0xaa44ff
+                windows: 0x88ccff,  // Light blue
+                vps: 0x88ffaa,      // Light green
+                cloud: 0xffcc88,    // Light orange/peach
+                cross: 0xcc99ff     // Light purple
             }
         },
         signal: {
@@ -54,7 +54,7 @@
             cityAmbientRate: 0.05,
             neuralAmbientRate: 0.15
         },
-        bloom: { strength: 1.3, radius: 0.5, threshold: 0.2 },
+        bloom: { strength: 0.8, radius: 0.5, threshold: 0.1 },
         camera: { fov: 52, near: 0.1, far: 4000 },
         transitionDuration: { dive: 1.6, surface: 1.6, switch: 0.7 }
     };
@@ -184,10 +184,92 @@
             p.dependencies = p.dependencies.filter(depId => byId.has(depId));
         });
 
+        assignPositions(projects);
+
         const edges = buildEdges(projects, byId);
         const adjacency = buildAdjacency(edges);
 
         return { projects, byId, edges, adjacency, CONFIG, ZONES, VISIBILITY };
+    }
+
+    function assignPositions(projects) {
+        const districtCount = CONFIG.world.districtNames.length;
+        const districtMap = {};
+        CONFIG.world.districtNames.forEach((name, i) => {
+            const angle = (i / districtCount) * Math.PI * 2;
+            districtMap[name] = {
+                cx: Math.cos(angle) * CONFIG.world.districtRadius,
+                cz: Math.sin(angle) * CONFIG.world.districtRadius
+            };
+        });
+
+        // Organize by zone for better city layout
+        const zoneOrder = [ZONES.WINDOWS, ZONES.VPS, ZONES.CLOUD, ZONES.CROSS];
+        const zoneAngles = {
+            [ZONES.WINDOWS]: -Math.PI / 2,   // South
+            [ZONES.VPS]: 0,                   // East
+            [ZONES.CLOUD]: Math.PI / 2,       // North
+            [ZONES.CROSS]: Math.PI            // West
+        };
+        const zoneRadius = CONFIG.world.districtRadius * 0.7;
+        const zoneSpread = CONFIG.world.districtSpread * 0.8;
+
+        // Group by zone within each district
+        const projectsByZone = {};
+        projects.forEach(p => {
+            const zone = p.zone || ZONES.CROSS;
+            if (!projectsByZone[zone]) projectsByZone[zone] = [];
+            projectsByZone[zone].push(p);
+        });
+
+        // Assign positions: each zone gets a quadrant, then arrange by type within zone
+        zoneOrder.forEach(zone => {
+            const zoneProjects = projectsByZone[zone] || [];
+            if (zoneProjects.length === 0) return;
+
+            const baseAngle = zoneAngles[zone] || 0;
+            const zoneCenter = {
+                cx: Math.cos(baseAngle) * zoneRadius,
+                cz: Math.sin(baseAngle) * zoneRadius
+            };
+
+            // Further group by type within zone
+            const typeGroups = {};
+            zoneProjects.forEach(p => {
+                const type = p.type || 'project';
+                if (!typeGroups[type]) typeGroups[type] = [];
+                typeGroups[type].push(p);
+            });
+
+            let typeIndex = 0;
+            Object.keys(typeGroups).forEach(type => {
+                const typeProjects = typeGroups[type];
+                const typeAngle = baseAngle + (typeIndex / Math.max(1, Object.keys(typeGroups).length - 1)) * (Math.PI / 4) - Math.PI / 8;
+                typeIndex++;
+
+                typeProjects.forEach((p, i) => {
+                    if (!p.position) {
+                        const a = typeAngle + (i / Math.max(1, typeProjects.length - 1)) * (Math.PI / 6) - Math.PI / 12;
+                        const r = Math.sqrt(Math.random()) * zoneSpread;
+                        p.position = {
+                            x: zoneCenter.cx + Math.cos(a) * r,
+                            y: 0,
+                            z: zoneCenter.cz + Math.sin(a) * r
+                        };
+                    }
+                });
+            });
+        });
+
+        // Fallback for any projects without position (shouldn't happen)
+        projects.forEach(p => {
+            if (!p.position) {
+                const center = districtMap[p.district] || { cx: 0, cz: 0 };
+                const a = Math.random() * Math.PI * 2;
+                const r = Math.sqrt(Math.random()) * CONFIG.world.districtSpread;
+                p.position = { x: center.cx + Math.cos(a) * r, y: 0, z: center.cz + Math.sin(a) * r };
+            }
+        });
     }
 
     async function loadProjects(source = 'public') {
