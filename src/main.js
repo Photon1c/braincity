@@ -297,7 +297,7 @@
             } else if (appState === 'neural' && neural.focus) {
                 const inCount = neural.pods.filter(p => p.type === 'in').length;
                 const outCount = neural.pods.filter(p => p.type === 'out').length;
-                hud.renderNeural(neural.focus, inCount, outCount, neural.signalPhase, edition);
+                hud.renderNeural(neural.focus, inCount, outCount, neural.signalPhase, edition, neural.membraneV, neural.axonLoad, neural.syncCoh);
             } else if (appState === 'state') {
                 hud.setTransitionTag();
                 const stats = document.getElementById('hud-stats');

@@ -59,9 +59,12 @@
             setAction('Go Neural →', 'go-neural');
         }
 
-        function renderNeural(p, inCount, outCount, signalPhase, edition) {
+        function renderNeural(p, inCount, outCount, signalPhase, edition, membraneV, axonLoad, syncCoh) {
             viewTag.textContent = 'NEURAL';
             const editionBadge = edition === 'laboratory' ? ' <span style="color: var(--gold); font-size: 7px;">[LAB]</span>' : '';
+            const mV = membraneV != null ? `${Math.round(membraneV)} mV` : '—';
+            const load = axonLoad != null ? `${Math.round(axonLoad)}%` : '—';
+            const coh = syncCoh != null ? `${Math.round(syncCoh)} Hz` : '—';
             setStats(`
                 <div class="row"><span>Node</span><span>${p.name}${editionBadge}</span></div>
                 <div class="row"><span>District</span><span>${p.district}</span></div>
@@ -70,7 +73,10 @@
                 <div class="row"><span>Axons</span><span>${outCount} out</span></div>
                 <div class="row"><span>Health</span><span>${Math.round(p.health * 100)}%</span></div>
                 <div class="row"><span>Pressure</span><span>${Math.round(p.pressure * 100)}%</span></div>
-                <div class="row"><span>Signal</span><span>${signalPhase}</span></div>
+                <div class="row" style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 4px; margin-top: 4px;"><span>Membrane V</span><span>${mV}</span></div>
+                <div class="row"><span>Axon Load</span><span>${load}</span></div>
+                <div class="row"><span>Sync Coh</span><span>${coh}</span></div>
+                <div class="row"><span style="color:var(--gold);letter-spacing:1px;">PHASE</span><span style="color:var(--gold);">${signalPhase}</span></div>
                 <div class="empty" style="margin-top:6px;">Click the soma to fire · click a linked node to explore it.</div>
             `);
             setAction('← Back to City', 'exit-neural');
