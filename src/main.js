@@ -241,8 +241,25 @@
 
             if (appState === 'city') {
                 const hit = city.pickAt(raycaster);
-                if (hit) { selectedProject = hit; city.select(hit); sidePanel.select(hit); }
-                else { selectedProject = null; city.clearSelection(); }
+                if (hit) {
+                    selectedProject = hit;
+                    city.select(hit);
+                    sidePanel.select(hit);
+                    // Focus camera on selected building
+                    const pos = hit.position;
+                    const h = hit.height || 40;
+                    const dist = Math.max(h * 2.5, 100);
+                    const camTo = new THREE.Vector3(pos.x + dist, h * 1.5 + 20, pos.z + dist);
+                    const targetTo = new THREE.Vector3(pos.x, h * 0.5, pos.z);
+                    cameraRig.startTransition('focus', {
+                        duration: 0.8,
+                        camTo, targetTo,
+                        onComplete: () => { controls.enabled = true; }
+                    });
+                } else {
+                    selectedProject = null;
+                    city.clearSelection();
+                }
             } else if (appState === 'neural') {
                 const hit = neural.pickAt(raycaster);
                 if (!hit) return;
