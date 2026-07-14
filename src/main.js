@@ -192,7 +192,8 @@
         hud.bindActions({
             onGoNeural: () => { if (selectedProject) enterNeural(selectedProject, true); },
             onExitNeural: exitNeural,
-            onToggleZone: enterStateEngine
+            onToggleZone: enterStateEngine,
+            onExitState: exitStateEngine
         });
 
         window.addEventListener('keydown', (e) => {
@@ -305,9 +306,7 @@
                     <div class="row"><span>Mode</span><span>STATE EVOLUTION</span></div>
                     <div class="empty" style="margin-top:6px;">${dims.map(d => `<div>${d.name}: ${Math.round((d.value||0)*100)}%</div>`).join('')}</div>
                 `;
-                hudAction.textContent = '← Back to City';
-                hudAction.dataset.action = 'exit-state';
-                hudAction.style.display = 'block';
+                hud.setAction('← Back to City', 'exit-state');
             }
         }
 

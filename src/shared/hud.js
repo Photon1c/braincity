@@ -19,6 +19,7 @@
             if (action.dataset.action === 'go-neural' && handlers.onGoNeural) handlers.onGoNeural();
             if (action.dataset.action === 'exit-neural' && handlers.onExitNeural) handlers.onExitNeural();
             if (action.dataset.action === 'toggle-zone' && handlers.onToggleZone) handlers.onToggleZone();
+            if (action.dataset.action === 'exit-state' && handlers.onExitState) handlers.onExitState();
         });
 
         function bindActions(h) { handlers = { ...handlers, ...h }; }
@@ -77,7 +78,7 @@
 
         function setTransitionTag() { viewTag.textContent = '···'; }
 
-        return { bindActions, renderCityEmpty, renderCitySelected, renderNeural, setTransitionTag };
+        return { bindActions, setAction, renderCityEmpty, renderCitySelected, renderNeural, setTransitionTag };
     }
 
     window.HUD = { createHUD };
