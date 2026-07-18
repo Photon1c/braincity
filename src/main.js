@@ -88,6 +88,7 @@
         const stateEngine = StateEvolutionEngine.create(THREE, scene, graph, CONFIG);
         const cameraRig = CameraRig.createCameraRig(THREE, camera, controls);
         const hud = HUD.createHUD();
+        const tour = TutorialTour.create(THREE, camera, controls, cameraRig);
 
         /* ---------------- SIDE PANEL ---------------- */
         const sidePanel = SidePanel.create();
@@ -218,11 +219,13 @@
         });
 
         window.addEventListener('keydown', (e) => {
+            if ((e.key === 't' || e.key === 'T') && appState !== 'city') return;
+            tour.handleKey(e);
             if (e.key === 'Escape') {
                 if (appState === 'neural') exitNeural();
                 else if (appState === 'state') exitStateEngine();
             }
-            if (e.key === 's' && appState === 'city') enterStateEngine();
+            if (e.key === 's' && appState === 'city' && !tour.isActive()) enterStateEngine();
         });
 
 /* ---------------- pointer -> pick ---------------- */
@@ -246,6 +249,7 @@
         });
 
         renderer.domElement.addEventListener('pointerdown', (e) => {
+            hideTourHint();
             pointerDownPos = { x: e.clientX, y: e.clientY };
             pointerDownTime = performance.now();
         });
@@ -306,11 +310,30 @@
         editionBadge.textContent = edition === 'laboratory' ? 'LABORATORY EDITION' : 'PUBLIC EDITION';
         document.body.appendChild(editionBadge);
 
+        /* ---------------- TOUR HINT ---------------- */
+        const tourHint = document.getElementById('tour-hint');
+        let tourHintTimeout = null;
+        let tourHintShown = false;
+
+        function showTourHint() {
+            if (tourHintShown) return;
+            tourHintShown = true;
+            tourHint.classList.add('visible');
+            clearTimeout(tourHintTimeout);
+            tourHintTimeout = setTimeout(function () { tourHint.classList.remove('visible'); }, 6000);
+        }
+
+        function hideTourHint() {
+            tourHintShown = true;
+            tourHint.classList.remove('visible');
+        }
+
         /* ---------------- ANIMATION_LOOP ---------------- */
         const clock = new THREE.Clock();
         let elapsed = 0;
 
         function renderHUD() {
+            if (tour.isActive()) { hud.setTransitionTag(); return; }
             if (appState === 'transition') { hud.setTransitionTag(); return; }
             if (appState === 'city') {
                 if (selectedProject) hud.renderCitySelected(selectedProject, city.signalPhase, edition);
@@ -331,21 +354,34 @@
             }
         }
 
+        function blockControlsDuringTour() {
+            if (tour.isActive()) controls.enabled = false;
+            else if (!cameraRig.isTransitioning()) controls.enabled = true;
+        }
+
         function animate() {
             requestAnimationFrame(animate);
             const dt = Math.min(clock.getDelta(), 0.05);
             elapsed += dt;
 
+            blockControlsDuringTour();
             controls.update();
             cameraRig.update(dt);
+            tour.update(dt);
             if (appState === 'city' || appState === 'transition') city.update(dt, elapsed);
             if (appState === 'neural' || appState === 'transition') neural.update(dt);
             if (appState === 'state') stateEngine.update(dt);
             renderHUD();
 
+            if (!tourHintShown && !tour.isActive() && appState === 'city' && elapsed > 2 && !selectedProject) {
+                showTourHint();
+            }
+
             composer.render();
         }
         animate();
+
+        showTourHint();
     }
 
     if (window.THREE) init();
