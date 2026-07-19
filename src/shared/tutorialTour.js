@@ -18,28 +18,24 @@
             title: 'Windows Zone',
             description: 'User-facing systems live here — monitors, visualizers, and dashboards that keep the city observable.',
             camera: { position: [180, 100, -300], target: [0, 30, -180] },
-            zone: 'windows'
         },
         {
             id: 'vps',
             title: 'VPS Zone',
             description: 'Infrastructure and deployment tooling. The engines and pipelines that keep the city running.',
             camera: { position: [380, 100, 60], target: [180, 30, 0] },
-            zone: 'vps'
         },
         {
             id: 'cloud',
             title: 'Cloud Zone',
             description: 'Distributed services, simulators, and market tools — the elastic layer that scales with demand.',
             camera: { position: [-200, 100, 380], target: [0, 30, 180] },
-            zone: 'cloud'
         },
         {
             id: 'cross',
             title: 'Cross-Platform Zone',
             description: 'Integration projects that bridge every part of the ecosystem. The nervous system of the city.',
             camera: { position: [-380, 100, -60], target: [-180, 30, 0] },
-            zone: 'cross'
         },
         {
             id: 'neural',
@@ -57,47 +53,68 @@
         }
     ];
 
+    var CAR_WAYPOINTS = [
+        { pos: [0, 160, 280], target: [0, 0, 0], label: 'Skyline Overview', desc: 'BrainCity from above &mdash; four execution zones arranged in a ring of districts.' },
+        { pos: [160, 35, -260], target: [0, 15, -160], label: 'Windows Zone', desc: 'User-facing systems &mdash; monitors, visualizers, and dashboards that keep the city observable.' },
+        { pos: [300, 25, -20], target: [160, 15, 0], label: 'VPS Zone', desc: 'Infrastructure tooling &mdash; the engines and pipelines that keep the city running.' },
+        { pos: [20, 35, 300], target: [0, 15, 160], label: 'Cloud Zone', desc: 'Distributed services, simulators, and market tools &mdash; the elastic layer.' },
+        { pos: [-300, 25, 20], target: [-160, 15, 0], label: 'Cross-Platform Zone', desc: 'Integration projects bridging every corner of the ecosystem.' },
+        { pos: [-100, 35, -80], target: [-20, 10, -20], label: 'Neighborhood Blocks', desc: 'Organized block addresses &mdash; every building has a zone, block, and plot.' },
+        { pos: [40, 50, 100], target: [0, 20, 0], label: 'Back to Center', desc: 'You can now explore freely. Drag to orbit, click a building to begin.' }
+    ];
+
     function createTutorialTour(THREE, camera, controls, cameraRig) {
         var stepIndex = -1;
         var active = false;
+        var carMode = false;
         var overlay = null;
         var card = null;
         var overlayVisible = false;
-        var zoneLabelCache = null;
+        var scene = null;
 
         function buildDOM() {
             overlay = document.createElement('div');
             overlay.id = 'tour-overlay';
             overlay.innerHTML = '<div id="tour-card"></div>';
             document.body.appendChild(overlay);
-
             card = document.getElementById('tour-card');
         }
 
-        function showCard(step) {
+        function showCard(step, isCar) {
             if (!overlay || !card) return;
             overlayVisible = true;
             overlay.classList.add('visible');
 
-            card.innerHTML = ''
-                + '<div class="tour-card-title">' + step.title + '</div>'
-                + '<div class="tour-card-desc">' + step.description + '</div>'
-                + '<div class="tour-card-footer">'
-                +   '<span class="tour-step-count">' + (stepIndex + 1) + ' / ' + TOUR_STEPS.length + '</span>'
-                +   (step.isFinal
-                ?     '<button class="tour-btn tour-btn-primary" id="tour-unlock-btn">Unlock Free Roam</button>'
-                :     '<button class="tour-btn tour-btn-next" id="tour-next-btn">Next &rarr;</button>'
-                )
-                + '</div>';
-
-            var nextBtn = document.getElementById('tour-next-btn');
-            var unlockBtn = document.getElementById('tour-unlock-btn');
-
-            if (nextBtn) {
-                nextBtn.addEventListener('click', function () { advance(); });
-            }
-            if (unlockBtn) {
-                unlockBtn.addEventListener('click', function () { end(); });
+            if (isCar) {
+                card.innerHTML = ''
+                    + '<div class="tour-card-title">' + step.label + '</div>'
+                    + '<div class="tour-card-desc">' + step.desc + '</div>'
+                    + '<div class="tour-card-footer">'
+                    +   '<span class="tour-step-count">' + (stepIndex + 1) + ' / ' + CAR_WAYPOINTS.length + '</span>'
+                    +   '<button class="tour-btn tour-btn-next" id="tour-resume-btn">Drive On &rarr;</button>'
+                    + '</div>';
+                var resumeBtn = document.getElementById('tour-resume-btn');
+                if (resumeBtn) resumeBtn.addEventListener('click', function () { hideCard(); cameraRig.resumeDrive(); });
+            } else if (step.isFinal) {
+                card.innerHTML = ''
+                    + '<div class="tour-card-title">' + step.title + '</div>'
+                    + '<div class="tour-card-desc">' + step.description + '</div>'
+                    + '<div class="tour-card-footer">'
+                    +   '<span class="tour-step-count">' + (stepIndex + 1) + ' / ' + TOUR_STEPS.length + '</span>'
+                    +   '<button class="tour-btn tour-btn-primary" id="tour-unlock-btn">Unlock Free Roam</button>'
+                    + '</div>';
+                var unlockBtn = document.getElementById('tour-unlock-btn');
+                if (unlockBtn) unlockBtn.addEventListener('click', function () { end(); });
+            } else {
+                card.innerHTML = ''
+                    + '<div class="tour-card-title">' + step.title + '</div>'
+                    + '<div class="tour-card-desc">' + step.description + '</div>'
+                    + '<div class="tour-card-footer">'
+                    +   '<span class="tour-step-count">' + (stepIndex + 1) + ' / ' + TOUR_STEPS.length + '</span>'
+                    +   '<button class="tour-btn tour-btn-next" id="tour-next-btn">Next &rarr;</button>'
+                    + '</div>';
+                var nextBtn = document.getElementById('tour-next-btn');
+                if (nextBtn) nextBtn.addEventListener('click', function () { advance(); });
             }
         }
 
@@ -108,7 +125,7 @@
         }
 
         function advance() {
-            if (!active) return;
+            if (!active || carMode) return;
             goToStep(stepIndex + 1);
         }
 
@@ -116,29 +133,73 @@
             if (index >= TOUR_STEPS.length) { end(); return; }
             stepIndex = index;
             var step = TOUR_STEPS[stepIndex];
-
             hideCard();
 
-            var fromPos = camera.position.clone();
-            var fromTarget = controls.target.clone();
             var toPos = new THREE.Vector3(step.camera.position[0], step.camera.position[1], step.camera.position[2]);
             var toTarget = new THREE.Vector3(step.camera.target[0], step.camera.target[1], step.camera.target[2]);
-
             var duration = stepIndex === 0 ? 0.01 : 1.8;
 
             cameraRig.startTransition('tour', {
                 duration: duration,
                 camTo: toPos,
                 targetTo: toTarget,
-                onProgress: function (kind, t) {
-                    if (t >= 0.5 && !overlayVisible && step.cardPersist !== false) {
-                        showCard(step);
-                    }
-                },
                 onComplete: function () {
                     if (step.cardPersist !== false && !overlayVisible) {
-                        showCard(step);
+                        if (stepIndex === 0) {
+                            showWelcomeCard();
+                        } else {
+                            showCard(step, false);
+                        }
                     }
+                }
+            });
+        }
+
+        function showWelcomeCard() {
+            if (!overlay || !card) return;
+            overlayVisible = true;
+            overlay.classList.add('visible');
+            card.innerHTML = ''
+                + '<div class="tour-card-title">' + TOUR_STEPS[0].title + '</div>'
+                + '<div class="tour-card-desc">' + TOUR_STEPS[0].description + '</div>'
+                + '<div class="tour-card-footer" style="flex-direction:column;gap:8px;">'
+                +   '<button class="tour-btn tour-btn-next" id="tour-start-btn" style="width:100%;">Start Step-by-Step Tour</button>'
+                +   '<button class="tour-btn tour-btn-primary" id="tour-car-btn" style="width:100%;">Take the Tour Car &rarr;</button>'
+                +   '<button class="tour-btn" id="tour-dismiss-btn" style="width:100%;background:transparent;color:rgba(255,255,255,0.4);border:1px solid rgba(255,255,255,0.1);">Dismiss</button>'
+                + '</div>';
+
+            document.getElementById('tour-start-btn').addEventListener('click', function () { hideCard(); setTimeout(function () { goToStep(1); }, 300); });
+            document.getElementById('tour-car-btn').addEventListener('click', function () { hideCard(); setTimeout(function () { startCarMode(); }, 300); });
+            document.getElementById('tour-dismiss-btn').addEventListener('click', function () { end(); });
+        }
+
+        function startCarMode() {
+            if (!active) return;
+            carMode = true;
+            stepIndex = 0;
+
+            var pathPoints = CAR_WAYPOINTS.map(function (wp) {
+                return new THREE.Vector3(wp.pos[0], wp.pos[1], wp.pos[2]);
+            });
+
+            var labels = CAR_WAYPOINTS.map(function (wp) {
+                return { label: wp.label, desc: wp.desc };
+            });
+
+            cameraRig.startDrive({
+                path: pathPoints,
+                speed: 50,
+                offset: { back: 12, up: 28 },
+                scene: scene,
+                labels: labels,
+                onWaypoint: function (index, label) {
+                    stepIndex = index;
+                    showCard(label, true);
+                    cameraRig.pauseDrive();
+                },
+                onComplete: function () {
+                    carMode = false;
+                    end();
                 }
             });
         }
@@ -146,20 +207,27 @@
         function start() {
             if (active) return;
             active = true;
+            carMode = false;
             if (!overlay) buildDOM();
             stepIndex = -1;
-            advance();
+            goToStep(0);
         }
 
         function end() {
             if (!active) return;
+            if (carMode) cameraRig.cancelDrive();
             active = false;
+            carMode = false;
             stepIndex = -1;
             hideCard();
             controls.enabled = true;
         }
 
+        function setScene(s) { scene = s; }
+
         function isActive() { return active; }
+
+        function isCarMode() { return carMode; }
 
         function handleKey(e) {
             if (e.key === 't' || e.key === 'T') {
@@ -168,7 +236,7 @@
             if (e.key === 'Escape') {
                 if (active) { end(); return; }
             }
-            if ((e.key === 'Enter' || e.key === ' ') && active) {
+            if ((e.key === 'Enter' || e.key === ' ') && active && !carMode) {
                 e.preventDefault();
                 advance();
             }
@@ -177,7 +245,7 @@
         function update(dt) {
         }
 
-        return { start, end, advance, isActive, handleKey, update, goToStep };
+        return { start, end, advance, isActive, isCarMode, handleKey, update, goToStep, setScene };
     }
 
     window.TutorialTour = { create: createTutorialTour };

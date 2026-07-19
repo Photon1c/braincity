@@ -1,8 +1,3 @@
-/* =========================================================================
-   renderers/RendererCity.js
-   City Mode: infrastructure view. Reads the same project graph the Neural
-   renderer reads, projects it as a skyline + road network with zone colors.
-   ========================================================================= */
 (function () {
     function createCityRenderer(THREE, scene, graph, CONFIG) {
         const { projects, byId, edges, ZONES } = graph;
@@ -11,14 +6,12 @@
         const group = new THREE.Group();
         scene.add(group);
 
-        // Subtle grid for dark theme
         const grid = new THREE.GridHelper(CONFIG.world.citySize * 1.4, 80, 0x4488aa, 0x224466);
         grid.material.transparent = true;
-        const GRID_BASE_OPACITY = 0.15;
+        const GRID_BASE_OPACITY = 0.1;
         grid.material.opacity = GRID_BASE_OPACITY;
         group.add(grid);
 
-        // Building geometries by type
         const buildingGeometries = {
             engine: new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0),
             project: new THREE.CylinderGeometry(0.5, 0.5, 1, 8).translate(0, 0.5, 0),
@@ -29,16 +22,21 @@
             'market-tool': new THREE.TorusGeometry(0.5, 0.15, 8, 16).translate(0, 0.5, 0)
         };
 
-        // Zone color map
-        const zoneColors = {
+        const zoneWallColors = {
+            [ZONES.WINDOWS]: new THREE.Color(CONFIG.colors.zone.windows).multiplyScalar(0.35),
+            [ZONES.VPS]: new THREE.Color(CONFIG.colors.zone.vps).multiplyScalar(0.35),
+            [ZONES.CLOUD]: new THREE.Color(CONFIG.colors.zone.cloud).multiplyScalar(0.35),
+            [ZONES.CROSS]: new THREE.Color(CONFIG.colors.zone.cross).multiplyScalar(0.35)
+        };
+        const zoneWindowColors = {
             [ZONES.WINDOWS]: new THREE.Color(CONFIG.colors.zone.windows),
             [ZONES.VPS]: new THREE.Color(CONFIG.colors.zone.vps),
             [ZONES.CLOUD]: new THREE.Color(CONFIG.colors.zone.cloud),
             [ZONES.CROSS]: new THREE.Color(CONFIG.colors.zone.cross)
         };
 
-        // Group projects by (type, zone) so each InstancedMesh gets one material color
-        const groups = new Map(); // key: "type|zone"
+        // Group by (type, zone) for building meshes
+        const groups = new Map();
         projects.forEach(p => {
             const type = p.type || 'project';
             const zone = p.zone || ZONES.CROSS;
@@ -48,13 +46,12 @@
             groups.set(key, g);
         });
 
-        const buildingsByType = new Map(); // key: type|zone
+        const buildingsByType = new Map();
         groups.forEach((g) => {
             const geo = (buildingGeometries[g.type] || buildingGeometries.project).clone();
-            const color = zoneColors[g.zone] || new THREE.Color(0xffffff);
-            const hex = color.getHex();
+            const color = zoneWallColors[g.zone] || new THREE.Color(0x333333);
             const mat = new THREE.MeshBasicMaterial({
-                color: hex,
+                color: color,
                 vertexColors: false,
                 toneMapped: false,
                 transparent: false,
@@ -69,53 +66,38 @@
             buildingsByType.set(key, { mesh, geo, mat, items: g.items, color, count: 0 });
         });
 
-        // WINDOW LIGHTS - add glowing windows to buildings
-        const windowLightsByType = new Map();
-        const windowLightGeo = new THREE.PlaneGeometry(0.3, 0.3);
-        const windowLightMat = new THREE.MeshBasicMaterial({
-            color: 0xfff8e7,
-            transparent: true,
-            opacity: 0.9,
-            toneMapped: true,
-            depthWrite: false
-        });
-        
-        // Count projects per type for window lights
-        const typeCounts2 = new Map();
+        // WINDOW LIGHTS per zone (each zone gets colored windows)
+        const windowGroups = new Map();
         projects.forEach(p => {
-            const t = p.type || 'project';
-            typeCounts2.set(t, (typeCounts2.get(t) || 0) + 1);
+            const zone = p.zone || ZONES.CROSS;
+            if (!windowGroups.has(zone)) windowGroups.set(zone, []);
+            windowGroups.get(zone).push(p);
         });
-        typeCounts2.forEach((count, type) => {
-            // Create window lights - roughly 6-8 windows per floor per side
-            const lightCount = count * 12;
-            const windowMesh = new THREE.InstancedMesh(windowLightGeo, windowLightMat, lightCount);
-            windowMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-            windowMesh.frustumCulled = false;
-            group.add(windowMesh);
-            windowLightsByType.set(type, { mesh: windowMesh, count: 0 });
+
+        const windowLightsByZone = new Map();
+        const windowLightGeo = new THREE.PlaneGeometry(0.35, 0.5);
+        windowGroups.forEach((items, zone) => {
+            const perBuilding = 48;
+            const totalWindows = items.length * perBuilding;
+            const zoneColor = zoneWindowColors[zone] || new THREE.Color(0xfff8e7);
+            const mat = new THREE.MeshBasicMaterial({
+                color: zoneColor,
+                transparent: true,
+                opacity: 0.85,
+                toneMapped: false,
+                depthWrite: false
+            });
+            const mesh = new THREE.InstancedMesh(windowLightGeo, mat, totalWindows);
+            mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+            mesh.frustumCulled = false;
+            group.add(mesh);
+            windowLightsByZone.set(zone, { mesh, mat, color: zoneColor, count: 0 });
         });
 
         function widthFor(node) { return map(node.repoCount, 1, 12, ...CONFIG.building.widthRange); }
         function heightFor(node) { return map(node.commitActivity, 0, 100, ...CONFIG.building.heightRange); }
         function depthFor(node) { return widthFor(node) * CONFIG.building.depthFactor; }
 
-        function zoneColorFor(node) {
-            const zoneColors = {
-                [ZONES.WINDOWS]: new THREE.Color(CONFIG.colors.zone.windows),
-                [ZONES.VPS]: new THREE.Color(CONFIG.colors.zone.vps),
-                [ZONES.CLOUD]: new THREE.Color(CONFIG.colors.zone.cloud),
-                [ZONES.CROSS]: new THREE.Color(CONFIG.colors.zone.cross)
-            };
-            return zoneColors[node.zone] || new THREE.Color(CONFIG.colors.zone.cross);
-        }
-        function healthColorFor(node) {
-            const mix = (1 - node.health) * 0.5 + node.pressure * 0.5;
-            const brightness = map(node.stars, 0, 500, 0.6, 1.5);
-            return new THREE.Color(CONFIG.colors.healthy).lerp(new THREE.Color(CONFIG.colors.stressed), mix).multiplyScalar(brightness);
-        }
-
-        // Build matrices per (type, zone) group
         const dummyMatrix = new THREE.Matrix4(), dummyPos = new THREE.Vector3(), dummyQuat = new THREE.Quaternion(), dummyScale = new THREE.Vector3();
         buildingsByType.forEach((g) => { g.count = 0; });
 
@@ -137,43 +119,47 @@
             node.baseColor = g.color;
             node.groupKey = key;
             node.groupIndex = idx;
-            
-            // Add window lights for this building
-            const wl = windowLightsByType.get(type);
+
+            // Window lights for this building
+            const wl = windowLightsByZone.get(zone);
             if (wl) {
-                const lightsPerFloor = 8;
-                const floors = Math.max(1, Math.floor(h / 4));
-                let lightIdx = wl.count;
-                for (let f = 0; f < floors; f++) {
-                    const y = 2 + f * 4;
-                    for (let s = 0; s < 4; s++) {
-                        for (let l = 0; l < lightsPerFloor / 4; l++) {
-                            if (lightIdx >= wl.mesh.count) break;
-                            const angle = (s * Math.PI / 2) + (l / (lightsPerFloor / 4)) * 0.6;
-                            const offset = Math.max(w, d) / 2 + 0.1;
-                            dummyPos.set(
-                                node.position.x + Math.cos(angle) * offset,
-                                y,
-                                node.position.z + Math.sin(angle) * offset
-                            );
-                            dummyQuat.setFromEuler(new THREE.Euler(0, angle + Math.PI / 2, 0, 'YXZ'));
+                const windowsPerFace = 12;
+                const floorH = 3;
+                const floors = Math.max(1, Math.floor((h - 2) / floorH));
+                const faceDims = [
+                    { cx: 0, cz: d / 2 + 0.05, axis: 'x', span: w },
+                    { cx: 0, cz: -d / 2 - 0.05, axis: 'x', span: w },
+                    { cx: w / 2 + 0.05, cz: 0, axis: 'z', span: d },
+                    { cx: -w / 2 - 0.05, cz: 0, axis: 'z', span: d }
+                ];
+                const perFace = Math.max(2, Math.floor(windowsPerFace / 4));
+
+                faceDims.forEach(face => {
+                    const step = face.span / (perFace + 1);
+                    const halfSpan = face.span / 2;
+                    for (let f = 0; f < floors; f++) {
+                        const y = 1.5 + f * floorH + (f % 2) * 0.5;
+                        for (let wi = 0; wi < perFace; wi++) {
+                            if (wl.count >= wl.mesh.count) break;
+                            const wx = face.axis === 'x' ? face.cx : (wi + 1) * step - halfSpan;
+                            const wz = face.axis === 'z' ? face.cz : (wi + 1) * step - halfSpan;
+                            dummyPos.set(node.position.x + wx, y, node.position.z + wz);
+                            const facingAngle = face.axis === 'x' ? 0 : Math.PI / 2;
+                            dummyQuat.setFromEuler(new THREE.Euler(0, facingAngle, 0, 'YXZ'));
                             dummyScale.set(1, 1, 1);
                             dummyMatrix.compose(dummyPos, dummyQuat, dummyScale);
-                            wl.mesh.setMatrixAt(lightIdx, dummyMatrix);
-                            lightIdx++;
+                            wl.mesh.setMatrixAt(wl.count, dummyMatrix);
+                            wl.count++;
                         }
                     }
-                }
-                wl.count = lightIdx;
+                });
             }
         });
 
         buildingsByType.forEach(({ mesh }) => {
             mesh.instanceMatrix.needsUpdate = true;
         });
-
-        // Update window lights
-        windowLightsByType.forEach(({ mesh }) => {
+        windowLightsByZone.forEach(({ mesh }) => {
             mesh.instanceMatrix.needsUpdate = true;
         });
 
@@ -191,20 +177,18 @@
         const cableGeo = new THREE.BufferGeometry();
         cableGeo.setAttribute('position', new THREE.BufferAttribute(cablePositions, 3));
         cableGeo.setAttribute('color', new THREE.BufferAttribute(cableColors, 3));
-        const CABLE_BASE_OPACITY = 0.55;
+        const CABLE_BASE_OPACITY = 0.4;
         const cableMaterial = new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: CABLE_BASE_OPACITY, toneMapped: false });
         const cablesMesh = new THREE.LineSegments(cableGeo, cableMaterial);
         group.add(cablesMesh);
 
         // Zone boundary labels
         const zoneLabels = {
-            windows: { pos: [0, 35, -CONFIG.world.districtRadius * 0.7], text: 'WINDOWS', color: CONFIG.colors.zone.windows },
-            vps: { pos: [CONFIG.world.districtRadius * 0.7, 35, 0], text: 'VPS', color: CONFIG.colors.zone.vps },
-            cloud: { pos: [0, 35, CONFIG.world.districtRadius * 0.7], text: 'CLOUD', color: CONFIG.colors.zone.cloud },
-            cross: { pos: [-CONFIG.world.districtRadius * 0.7, 35, 0], text: 'CROSS', color: CONFIG.colors.zone.cross }
+            windows: { pos: [0, 40, -CONFIG.world.districtRadius * 0.7], text: 'WINDOWS', color: CONFIG.colors.zone.windows },
+            vps: { pos: [CONFIG.world.districtRadius * 0.7, 40, 0], text: 'VPS', color: CONFIG.colors.zone.vps },
+            cloud: { pos: [0, 40, CONFIG.world.districtRadius * 0.7], text: 'CLOUD', color: CONFIG.colors.zone.cloud },
+            cross: { pos: [-CONFIG.world.districtRadius * 0.7, 40, 0], text: 'CROSS', color: CONFIG.colors.zone.cross }
         };
-        const labelSprites = [];
-        const loader = new THREE.TextureLoader();
         Object.entries(zoneLabels).forEach(([key, label]) => {
             const canvas = document.createElement('canvas');
             canvas.width = 256; canvas.height = 64;
@@ -220,7 +204,6 @@
             sprite.position.set(...label.pos);
             sprite.scale.set(80, 20, 1);
             group.add(sprite);
-            labelSprites.push(sprite);
         });
 
         const RING_BASE_OPACITY = 0.6;
@@ -254,13 +237,10 @@
             });
         }
 
-        // Hover state
         let hoveredInstanceId = null;
-        const hoverColor = new THREE.Color(0xffff00); // Bright yellow for bloom
+        let signalPhase = 'IDLE';
 
-let signalPhase = 'IDLE';
         function update(dt, elapsed) {
-            // Reset cable colors
             cableColors.forEach((_, i) => {
                 const edgeIdx = Math.floor(i / 6);
                 const edge = edges[edgeIdx];
@@ -294,6 +274,7 @@ let signalPhase = 'IDLE';
 
         function setOpacity(v) {
             buildingsByType.forEach(({ mat }) => mat.opacity = v);
+            windowLightsByZone.forEach(({ mat }) => { mat.opacity = 0.85 * v; });
             cableMaterial.opacity = CABLE_BASE_OPACITY * v;
             grid.material.opacity = GRID_BASE_OPACITY * v;
             ringMaterial.opacity = RING_BASE_OPACITY * v;
