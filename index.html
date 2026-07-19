@@ -139,10 +139,25 @@
         border: 1px solid var(--panel-border);
         padding: 8px 16px; border-radius: 999px;
         backdrop-filter: blur(18px) saturate(160%);
-        pointer-events: none; opacity: 0; transition: opacity 0.6s;
+        cursor: pointer; opacity: 0; transition: opacity 0.6s;
         white-space: nowrap;
     }
     #tour-hint.visible { opacity: 1; }
+    #tour-hint:hover { border-color: var(--cyan); color: var(--cyan); }
+
+    #tour-btn {
+        position: absolute; z-index: 15; bottom: 24px; left: 50%;
+        transform: translateX(-50%);
+        font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase;
+        color: var(--cyan); background: rgba(0,229,255,0.12);
+        border: 1px solid rgba(0,229,255,0.3);
+        padding: 10px 22px; border-radius: 999px;
+        backdrop-filter: blur(18px) saturate(160%);
+        cursor: pointer; transition: all 0.2s;
+        font-family: inherit; font-weight: 600;
+        display: none;
+    }
+    #tour-btn:hover { background: rgba(0,229,255,0.25); box-shadow: 0 0 20px rgba(0,229,255,0.25); }
 
     @media (max-width: 640px) {
         #hud { width: calc(100% - 32px); max-width: none; top: 8px; left: 8px; padding: 8px 10px; }
@@ -154,6 +169,7 @@
         #legend { display: none; }
         #sidepanel { width: 100% !important; }
         #sidepanel .project-row { padding: 8px 10px !important; }
+        #tour-btn { font-size: 9px; padding: 8px 18px; }
     }
     @media (max-width: 480px) {
         #hud h1 { font-size: 8px; }
@@ -170,6 +186,7 @@
 </div>
 <div id="instructions">Drag to orbit · Tap to select · T for Tour · S for State Engine · Esc to surface</div>
 <div id="tour-hint">Press <strong>T</strong> for a guided tour</div>
+<button id="tour-btn">Start Tour</button>
 
 <div id="legend">
     <div style="font-weight: 700; color: var(--cyan); margin-bottom: 6px; font-size: 10px;">EXECUTION ZONES</div>
