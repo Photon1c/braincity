@@ -311,10 +311,21 @@
         editionBadge.textContent = edition === 'laboratory' ? 'LABORATORY EDITION' : 'PUBLIC EDITION';
         document.body.appendChild(editionBadge);
 
-        /* ---------------- TOUR HINT ---------------- */
+        /* ---------------- TOUR HINT + BUTTON ---------------- */
         const tourHint = document.getElementById('tour-hint');
+        const tourBtn = document.getElementById('tour-btn');
         let tourHintTimeout = null;
         let tourHintShown = false;
+
+        function updateTourButton() {
+            if (tourBtn) {
+                var show = !tour.isActive() && appState === 'city';
+                tourBtn.style.display = show ? 'block' : 'none';
+            }
+        }
+
+        tourHint.addEventListener('click', function () { if (!tour.isActive()) tour.start(); updateTourButton(); });
+        tourBtn.addEventListener('click', function () { if (!tour.isActive()) tour.start(); updateTourButton(); });
 
         function showTourHint() {
             if (tourHintShown) return;
@@ -356,8 +367,10 @@
         }
 
         function blockControlsDuringTour() {
-            if (tour.isActive()) controls.enabled = false;
+            var tourActive = tour.isActive();
+            if (tourActive) controls.enabled = false;
             else if (!cameraRig.isTransitioning()) controls.enabled = true;
+            updateTourButton();
         }
 
         function animate() {
