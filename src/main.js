@@ -89,6 +89,7 @@
         const cameraRig = CameraRig.createCameraRig(THREE, camera, controls);
         const hud = HUD.createHUD();
         const tour = TutorialTour.create(THREE, camera, controls, cameraRig);
+        tour.setScene(scene);
 
         /* ---------------- SIDE PANEL ---------------- */
         const sidePanel = SidePanel.create();

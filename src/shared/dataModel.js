@@ -21,9 +21,11 @@
             ],
             districtRadius: 260,
             districtSpread: 110,
-            nodesPerDistrict: [4, 8]
+            nodesPerDistrict: [4, 8],
+            blockPitch: 36,
+            roadWidth: 14
         },
-        building: { widthRange: [5, 20], heightRange: [10, 140], depthFactor: 1 },
+        building: { widthRange: [8, 22], heightRange: [10, 140], depthFactor: 1 },
         neural: {
             home: [0, 150, 0],
             somaRadiusRange: [4, 10],
@@ -54,7 +56,7 @@
             cityAmbientRate: 0.05,
             neuralAmbientRate: 0.15
         },
-        bloom: { strength: 0.8, radius: 0.5, threshold: 0.1 },
+        bloom: { strength: 0.35, radius: 0.4, threshold: 0.15 },
         camera: { fov: 52, near: 0.1, far: 4000 },
         transitionDuration: { dive: 1.6, surface: 1.6, switch: 0.7 }
     };
@@ -84,16 +86,9 @@
     function generateProjects() {
         const projects = [];
         let id = 0;
-        const districtCount = CONFIG.world.districtNames.length;
-        CONFIG.world.districtNames.forEach((districtName, di) => {
-            const angle = (di / districtCount) * Math.PI * 2;
-            const cx = Math.cos(angle) * CONFIG.world.districtRadius;
-            const cz = Math.sin(angle) * CONFIG.world.districtRadius;
+        CONFIG.world.districtNames.forEach((districtName) => {
             const count = randInt(...CONFIG.world.nodesPerDistrict);
             for (let i = 0; i < count; i++) {
-                const a = Math.random() * Math.PI * 2;
-                const r = Math.sqrt(Math.random()) * CONFIG.world.districtSpread;
-                const position = { x: cx + Math.cos(a) * r, y: 0, z: cz + Math.sin(a) * r };
                 const zone = pick(Object.values(ZONES));
                 const descs = {
                     engine: 'Core processing engine for predictive modeling and simulation orchestration.',
@@ -117,7 +112,6 @@
                     health: Math.random(),
                     pressure: Math.random(),
                     dependencies: [],
-                    position,
                     phaseOffset: Math.random() * Math.PI * 2,
                     activityFreq: 0.3 + Math.random() * 0.6,
                     zone,
@@ -204,81 +198,68 @@
     }
 
     function assignPositions(projects) {
-        const districtCount = CONFIG.world.districtNames.length;
-        const districtMap = {};
-        CONFIG.world.districtNames.forEach((name, i) => {
-            const angle = (i / districtCount) * Math.PI * 2;
-            districtMap[name] = {
-                cx: Math.cos(angle) * CONFIG.world.districtRadius,
-                cz: Math.sin(angle) * CONFIG.world.districtRadius
-            };
-        });
+        var unpositioned = projects.filter(function (p) { return !p.position; });
+        if (unpositioned.length === 0) return;
 
-        // Organize by zone for better city layout
-        const zoneOrder = [ZONES.WINDOWS, ZONES.VPS, ZONES.CLOUD, ZONES.CROSS];
-        const zoneAngles = {
-            [ZONES.WINDOWS]: -Math.PI / 2,   // South
-            [ZONES.VPS]: 0,                   // East
-            [ZONES.CLOUD]: Math.PI / 2,       // North
-            [ZONES.CROSS]: Math.PI            // West
+        var PITCH = CONFIG.world.blockPitch;
+        var zoneOrder = [ZONES.WINDOWS, ZONES.VPS, ZONES.CLOUD, ZONES.CROSS];
+        var zoneAngles = {
+            [ZONES.WINDOWS]: -Math.PI / 2,
+            [ZONES.VPS]: 0,
+            [ZONES.CLOUD]: Math.PI / 2,
+            [ZONES.CROSS]: Math.PI
         };
-        const zoneRadius = CONFIG.world.districtRadius * 0.7;
-        const zoneSpread = CONFIG.world.districtSpread * 0.8;
+        var zoneRadius = CONFIG.world.districtRadius * 0.7;
+        var blockSpread = CONFIG.world.districtSpread * 0.55;
 
-        // Group by zone within each district
-        const projectsByZone = {};
-        projects.forEach(p => {
-            const zone = p.zone || ZONES.CROSS;
-            if (!projectsByZone[zone]) projectsByZone[zone] = [];
-            projectsByZone[zone].push(p);
+        var byZone = {};
+        unpositioned.forEach(function (p) {
+            var z = p.zone || ZONES.CROSS;
+            if (!byZone[z]) byZone[z] = {};
+            var d = p.district || 'Unknown';
+            if (!byZone[z][d]) byZone[z][d] = [];
+            byZone[z][d].push(p);
         });
 
-        // Assign positions: each zone gets a quadrant, then arrange by type within zone
-        zoneOrder.forEach(zone => {
-            const zoneProjects = projectsByZone[zone] || [];
-            if (zoneProjects.length === 0) return;
+        zoneOrder.forEach(function (zone) {
+            var districts = byZone[zone];
+            if (!districts) return;
+            var angle = zoneAngles[zone];
+            var cx = Math.cos(angle) * zoneRadius;
+            var cz = Math.sin(angle) * zoneRadius;
+            var districtNames = Object.keys(districts);
+            var perSide = Math.max(1, Math.ceil(Math.sqrt(districtNames.length)));
 
-            const baseAngle = zoneAngles[zone] || 0;
-            const zoneCenter = {
-                cx: Math.cos(baseAngle) * zoneRadius,
-                cz: Math.sin(baseAngle) * zoneRadius
-            };
+            districtNames.forEach(function (name, di) {
+                var zoneProjects = districts[name];
+                var blockRow = Math.floor(di / perSide);
+                var blockCol = di % perSide;
+                var side = (blockCol - (perSide - 1) / 2) * blockSpread * 0.9;
+                var perpX = -Math.sin(angle) * side;
+                var perpZ = Math.cos(angle) * side;
+                var bx = cx + perpX + Math.cos(angle) * blockRow * blockSpread * 0.5;
+                var bz = cz + perpZ + Math.sin(angle) * blockRow * blockSpread * 0.5;
 
-            // Further group by type within zone
-            const typeGroups = {};
-            zoneProjects.forEach(p => {
-                const type = p.type || 'project';
-                if (!typeGroups[type]) typeGroups[type] = [];
-                typeGroups[type].push(p);
-            });
+                var perRow = Math.max(1, Math.ceil(Math.sqrt(zoneProjects.length)));
+                var gridW = (perRow - 1) * PITCH;
 
-            let typeIndex = 0;
-            Object.keys(typeGroups).forEach(type => {
-                const typeProjects = typeGroups[type];
-                const typeAngle = baseAngle + (typeIndex / Math.max(1, Object.keys(typeGroups).length - 1)) * (Math.PI / 4) - Math.PI / 8;
-                typeIndex++;
-
-                typeProjects.forEach((p, i) => {
-                    if (!p.position) {
-                        const a = typeAngle + (i / Math.max(1, typeProjects.length - 1)) * (Math.PI / 6) - Math.PI / 12;
-                        const r = Math.sqrt(Math.random()) * zoneSpread;
-                        p.position = {
-                            x: zoneCenter.cx + Math.cos(a) * r,
-                            y: 0,
-                            z: zoneCenter.cz + Math.sin(a) * r
-                        };
-                    }
+                zoneProjects.forEach(function (p, i) {
+                    var row = Math.floor(i / perRow);
+                    var col = i % perRow;
+                    var stagger = (row % 2) * (PITCH / 3);
+                    p.position = {
+                        x: bx + col * PITCH - gridW / 2 + stagger,
+                        y: 0,
+                        z: bz + row * PITCH - gridW / 2
+                    };
+                    p.address = 'B' + String.fromCharCode(65 + di) + '-' + (row + 1) + String.fromCharCode(65 + col);
                 });
             });
         });
 
-        // Fallback for any projects without position (shouldn't happen)
-        projects.forEach(p => {
+        unpositioned.forEach(function (p) {
             if (!p.position) {
-                const center = districtMap[p.district] || { cx: 0, cz: 0 };
-                const a = Math.random() * Math.PI * 2;
-                const r = Math.sqrt(Math.random()) * CONFIG.world.districtSpread;
-                p.position = { x: center.cx + Math.cos(a) * r, y: 0, z: center.cz + Math.sin(a) * r };
+                p.position = { x: (Math.random() - 0.5) * 200, y: 0, z: (Math.random() - 0.5) * 200 };
             }
         });
     }
