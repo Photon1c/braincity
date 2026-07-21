@@ -1,6 +1,213 @@
 (function () {
+    function buildRoadSystem(THREE, parent, blocks, zoneCenters, CONFIG) {
+        var roadGroup = new THREE.Group();
+        var roadMaterials = [];
+
+        var citySize = CONFIG.world.citySize * 1.6;
+
+        var groundGeo = new THREE.PlaneGeometry(citySize, citySize);
+        var groundMat = new THREE.MeshBasicMaterial({
+            color: 0x0a0a14,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.9,
+            toneMapped: false,
+            depthWrite: true
+        });
+        var ground = new THREE.Mesh(groundGeo, groundMat);
+        ground.rotation.x = -Math.PI / 2;
+        ground.position.y = 0.005;
+        roadGroup.add(ground);
+        roadMaterials.push(groundMat);
+
+        var padMat = new THREE.MeshBasicMaterial({
+            color: 0x111122,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.6,
+            toneMapped: false,
+            depthWrite: true
+        });
+        roadMaterials.push(padMat);
+        var padGeo = new THREE.PlaneGeometry(1, 1);
+
+        blocks.forEach(function (block) {
+            var size = block.halfSize * 2;
+            var pad = new THREE.Mesh(padGeo, padMat);
+            pad.rotation.x = -Math.PI / 2;
+            pad.position.set(block.center.x, 0.015, block.center.z);
+            pad.scale.set(size, size, 1);
+            roadGroup.add(pad);
+        });
+
+        addRoadsBetweenBlocks(THREE, roadGroup, blocks, CONFIG, roadMaterials);
+        addRadialRoads(THREE, roadGroup, zoneCenters, CONFIG, roadMaterials);
+        addCentralHub(THREE, roadGroup, CONFIG, roadMaterials);
+
+        parent.add(roadGroup);
+        return roadMaterials;
+    }
+
+    function addRoadsBetweenBlocks(THREE, roadGroup, blocks, CONFIG, roadMaterials) {
+        var byZone = {};
+        blocks.forEach(function (b) {
+            if (!byZone[b.zone]) byZone[b.zone] = [];
+            byZone[b.zone].push(b);
+        });
+
+        var roadMat = new THREE.MeshBasicMaterial({
+            color: 0x1a1a2e,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.7,
+            toneMapped: false,
+            depthWrite: true
+        });
+        roadMaterials.push(roadMat);
+        var stripeMat = new THREE.MeshBasicMaterial({
+            color: 0x334466,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.8,
+            toneMapped: false,
+            depthWrite: true
+        });
+        roadMaterials.push(stripeMat);
+
+        var roadWidth = CONFIG.world.roadWidth;
+
+        Object.keys(byZone).forEach(function (zone) {
+            var zoneBlocks = byZone[zone];
+            var perSide = zoneBlocks[0].perSide;
+
+            var grid = {};
+            zoneBlocks.forEach(function (b) {
+                var row = Math.floor(b.di / perSide);
+                var col = b.di % perSide;
+                grid[row + ',' + col] = b;
+            });
+
+            var seen = {};
+
+            function drawRoadBetween(a, b) {
+                var key = a.di < b.di ? a.di + '-' + b.di : b.di + '-' + a.di;
+                if (seen[key]) return;
+                seen[key] = true;
+
+                var dx = b.center.x - a.center.x;
+                var dz = b.center.z - a.center.z;
+                var dist = Math.sqrt(dx * dx + dz * dz);
+                var cx = (a.center.x + b.center.x) / 2;
+                var cz = (a.center.z + b.center.z) / 2;
+                var angle = Math.atan2(dz, dx);
+
+                var roadGeo = new THREE.PlaneGeometry(dist - a.halfSize - b.halfSize, roadWidth);
+                var road = new THREE.Mesh(roadGeo, roadMat);
+                road.rotation.set(-Math.PI / 2, angle, 0);
+                road.position.set(cx, 0.025, cz);
+                roadGroup.add(road);
+
+                var stripeGeo = new THREE.PlaneGeometry(dist - a.halfSize - b.halfSize, 1.2);
+                var stripe = new THREE.Mesh(stripeGeo, stripeMat);
+                stripe.rotation.set(-Math.PI / 2, angle, 0);
+                stripe.position.set(cx, 0.028, cz);
+                roadGroup.add(stripe);
+            }
+
+            for (var r = 0; r < perSide; r++) {
+                for (var c = 0; c < perSide; c++) {
+                    var current = grid[r + ',' + c];
+                    if (!current) continue;
+                    var right = grid[r + ',' + (c + 1)];
+                    var bottom = grid[(r + 1) + ',' + c];
+                    if (right) drawRoadBetween(current, right);
+                    if (bottom) drawRoadBetween(current, bottom);
+                }
+            }
+        });
+    }
+
+    function addRadialRoads(THREE, roadGroup, zoneCenters, CONFIG, roadMaterials) {
+        var roadWidth = CONFIG.world.roadWidth * 1.6;
+        var roadMat = new THREE.MeshBasicMaterial({
+            color: 0x222244,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.75,
+            toneMapped: false,
+            depthWrite: true
+        });
+        roadMaterials.push(roadMat);
+        var laneMat = new THREE.MeshBasicMaterial({
+            color: 0x445577,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.7,
+            toneMapped: false,
+            depthWrite: true
+        });
+        roadMaterials.push(laneMat);
+
+        Object.keys(zoneCenters).forEach(function (zone) {
+            var zc = zoneCenters[zone];
+            var dx = zc.x;
+            var dz = zc.z;
+            var dist = Math.sqrt(dx * dx + dz * dz);
+            var angle = Math.atan2(dz, dx);
+
+            var roadGeo = new THREE.PlaneGeometry(dist, roadWidth);
+            var road = new THREE.Mesh(roadGeo, roadMat);
+            road.rotation.set(-Math.PI / 2, angle, 0);
+            road.position.set(dx / 2, 0.025, dz / 2);
+            roadGroup.add(road);
+
+            var leftLaneGeo = new THREE.PlaneGeometry(dist, 0.8);
+            var leftLane = new THREE.Mesh(leftLaneGeo, laneMat);
+            leftLane.rotation.set(-Math.PI / 2, angle, 0);
+            leftLane.position.set(dx / 2, 0.028, dz / 2 - roadWidth * 0.25);
+            roadGroup.add(leftLane);
+
+            var rightLaneGeo = new THREE.PlaneGeometry(dist, 0.8);
+            var rightLane = new THREE.Mesh(rightLaneGeo, laneMat);
+            rightLane.rotation.set(-Math.PI / 2, angle, 0);
+            rightLane.position.set(dx / 2, 0.028, dz / 2 + roadWidth * 0.25);
+            roadGroup.add(rightLane);
+        });
+    }
+
+    function addCentralHub(THREE, roadGroup, CONFIG, roadMaterials) {
+        var hubRadius = CONFIG.world.roadWidth * 1.5;
+        var hubGeo = new THREE.CylinderGeometry(hubRadius, hubRadius, 0.01, 32);
+        var hubMat = new THREE.MeshBasicMaterial({
+            color: 0x223355,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.8,
+            toneMapped: false,
+            depthWrite: true
+        });
+        roadMaterials.push(hubMat);
+        var hub = new THREE.Mesh(hubGeo, hubMat);
+        hub.position.y = 0.03;
+        roadGroup.add(hub);
+
+        var ringGeo = new THREE.TorusGeometry(hubRadius, 0.5, 8, 32);
+        var ringMat = new THREE.MeshBasicMaterial({
+            color: 0x445577,
+            transparent: true,
+            opacity: 0.6,
+            toneMapped: false,
+            depthWrite: true
+        });
+        roadMaterials.push(ringMat);
+        var ring = new THREE.Mesh(ringGeo, ringMat);
+        ring.rotation.x = -Math.PI / 2;
+        ring.position.y = 0.032;
+        roadGroup.add(ring);
+    }
+
     function createCityRenderer(THREE, scene, graph, CONFIG) {
-        const { projects, byId, edges, ZONES } = graph;
+        const { projects, byId, edges, ZONES, blocks, zoneCenters } = graph;
         const map = THREE.MathUtils.mapLinear;
 
         const group = new THREE.Group();
@@ -8,9 +215,11 @@
 
         const grid = new THREE.GridHelper(CONFIG.world.citySize * 1.4, 80, 0x4488aa, 0x224466);
         grid.material.transparent = true;
-        const GRID_BASE_OPACITY = 0.1;
+        const GRID_BASE_OPACITY = 0.04;
         grid.material.opacity = GRID_BASE_OPACITY;
         group.add(grid);
+
+        var roadMaterials = buildRoadSystem(THREE, group, blocks, zoneCenters, CONFIG);
 
         const buildingGeometries = {
             engine: new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0),
@@ -278,6 +487,7 @@
             cableMaterial.opacity = CABLE_BASE_OPACITY * v;
             grid.material.opacity = GRID_BASE_OPACITY * v;
             ringMaterial.opacity = RING_BASE_OPACITY * v;
+            roadMaterials.forEach(function (mat) { mat.opacity = mat.opacity > 0.01 ? v : mat.opacity; });
             pulses.setOpacity(v);
         }
 
