@@ -54,13 +54,21 @@
     ];
 
     var CAR_WAYPOINTS = [
-        { pos: [0, 160, 280], target: [0, 0, 0], label: 'Skyline Overview', desc: 'BrainCity from above &mdash; four execution zones arranged in a ring of districts.' },
-        { pos: [160, 35, -260], target: [0, 15, -160], label: 'Windows Zone', desc: 'User-facing systems &mdash; monitors, visualizers, and dashboards that keep the city observable.' },
-        { pos: [300, 25, -20], target: [160, 15, 0], label: 'VPS Zone', desc: 'Infrastructure tooling &mdash; the engines and pipelines that keep the city running.' },
-        { pos: [20, 35, 300], target: [0, 15, 160], label: 'Cloud Zone', desc: 'Distributed services, simulators, and market tools &mdash; the elastic layer.' },
-        { pos: [-300, 25, 20], target: [-160, 15, 0], label: 'Cross-Platform Zone', desc: 'Integration projects bridging every corner of the ecosystem.' },
-        { pos: [-100, 35, -80], target: [-20, 10, -20], label: 'Neighborhood Blocks', desc: 'Organized block addresses &mdash; every building has a zone, block, and plot.' },
-        { pos: [40, 50, 100], target: [0, 20, 0], label: 'Back to Center', desc: 'You can now explore freely. Drag to orbit, click a building to begin.' }
+        { pos: [0, 2, 0], target: [0, 0, -30], label: 'Central Hub', desc: 'The Central Hub &mdash; all four execution zones converge at this intersection.' },
+        { pos: [0, 2, -60], target: [0, 0, -100], label: 'Southbound', desc: 'Heading south on the Windows Radial &mdash; the main artery connecting zones to the hub.' },
+        { pos: [30, 2, -130], target: [30, 0, -170], label: 'Windows Zone', desc: 'Entering the Windows Zone &mdash; monitors, visualizers, and dashboards that keep the city observable.' },
+        { pos: [-20, 2, -175], target: [0, 0, -195], label: 'Windows Blocks', desc: 'District blocks with grid addresses &mdash; every building has a zone, block, and plot.' },
+        { pos: [-50, 2, -140], target: [-60, 0, -100], label: 'Windows Eastbound', desc: 'Eastbound through the Windows neighborhoods toward the VPS corridor.' },
+        { pos: [40, 2, -90], target: [80, 0, -50], label: 'Crossing to VPS', desc: 'North-east toward the VPS Zone &mdash; infrastructure and deployment engines.' },
+        { pos: [130, 2, -10], target: [170, 0, 0], label: 'VPS Zone', desc: 'The VPS Zone &mdash; pipelines and engines keeping the city running.' },
+        { pos: [180, 2, 30], target: [190, 0, 50], label: 'VPS Blocks', desc: 'Infrastructure tooling blocks &mdash; servers, containers, and orchestration.' },
+        { pos: [140, 2, 80], target: [100, 0, 100], label: 'Northbound to Cloud', desc: 'Northbound toward the Cloud Zone &mdash; elastic services and distributed systems.' },
+        { pos: [20, 2, 140], target: [0, 0, 180], label: 'Cloud Zone', desc: 'The Cloud Zone &mdash; simulators, market tools, and the elastic layer.' },
+        { pos: [-30, 2, 175], target: [-40, 0, 190], label: 'Cloud Blocks', desc: 'Distributed compute blocks &mdash; scaling on demand across the city.' },
+        { pos: [-90, 2, 130], target: [-120, 0, 100], label: 'West to Cross-Platform', desc: 'West toward the Cross-Platform Zone &mdash; where everything connects.' },
+        { pos: [-160, 2, 20], target: [-180, 0, 0], label: 'Cross-Platform Zone', desc: 'Integration projects bridging every corner of the ecosystem.' },
+        { pos: [-140, 2, -40], target: [-100, 0, -60], label: 'Cross-Platform Blocks', desc: 'The nervous system of the city &mdash; cross-cutting projects that tie zones together.' },
+        { pos: [-30, 2, -10], target: [0, 0, 0], label: 'Returning Home', desc: 'Back to the Central Hub. Explore freely &mdash; drag to orbit, click a building to begin.' }
     ];
 
     function createTutorialTour(THREE, camera, controls, cameraRig) {
@@ -188,8 +196,8 @@
 
             cameraRig.startDrive({
                 path: pathPoints,
-                speed: 50,
-                offset: { back: 12, up: 28 },
+                speed: 35,
+                offset: { back: 10, up: 5 },
                 scene: scene,
                 labels: labels,
                 onWaypoint: function (index, label) {

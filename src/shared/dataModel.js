@@ -189,19 +189,35 @@
             p.dependencies = p.dependencies.filter(depId => byId.has(depId));
         });
 
-        assignPositions(projects);
+        const blocks = assignPositions(projects);
+
+        var zoneCenters = {};
+        var zoneAngles = {
+            [ZONES.WINDOWS]: -Math.PI / 2,
+            [ZONES.VPS]: 0,
+            [ZONES.CLOUD]: Math.PI / 2,
+            [ZONES.CROSS]: Math.PI
+        };
+        var zoneRadius = CONFIG.world.districtRadius * 0.7;
+        Object.keys(zoneAngles).forEach(function (z) {
+            zoneCenters[z] = {
+                x: Math.cos(zoneAngles[z]) * zoneRadius,
+                z: Math.sin(zoneAngles[z]) * zoneRadius
+            };
+        });
 
         const edges = buildEdges(projects, byId);
         const adjacency = buildAdjacency(edges);
 
-        return { projects, byId, edges, adjacency, CONFIG, ZONES, VISIBILITY };
+        return { projects, byId, edges, adjacency, blocks, zoneCenters, CONFIG, ZONES, VISIBILITY };
     }
 
     function assignPositions(projects) {
         var unpositioned = projects.filter(function (p) { return !p.position; });
-        if (unpositioned.length === 0) return;
+        if (unpositioned.length === 0) return [];
 
         var PITCH = CONFIG.world.blockPitch;
+        var ROAD = CONFIG.world.roadWidth;
         var zoneOrder = [ZONES.WINDOWS, ZONES.VPS, ZONES.CLOUD, ZONES.CROSS];
         var zoneAngles = {
             [ZONES.WINDOWS]: -Math.PI / 2,
@@ -220,6 +236,8 @@
             if (!byZone[z][d]) byZone[z][d] = [];
             byZone[z][d].push(p);
         });
+
+        var blocks = [];
 
         zoneOrder.forEach(function (zone) {
             var districts = byZone[zone];
@@ -243,6 +261,16 @@
                 var perRow = Math.max(1, Math.ceil(Math.sqrt(zoneProjects.length)));
                 var gridW = (perRow - 1) * PITCH;
 
+                var halfPad = gridW / 2 + PITCH;
+                blocks.push({
+                    zone: zone,
+                    name: name,
+                    center: { x: bx, z: bz },
+                    halfSize: halfPad,
+                    perSide: perSide,
+                    di: di
+                });
+
                 zoneProjects.forEach(function (p, i) {
                     var row = Math.floor(i / perRow);
                     var col = i % perRow;
@@ -262,6 +290,8 @@
                 p.position = { x: (Math.random() - 0.5) * 200, y: 0, z: (Math.random() - 0.5) * 200 };
             }
         });
+
+        return blocks;
     }
 
     async function loadProjects(source = 'public') {
